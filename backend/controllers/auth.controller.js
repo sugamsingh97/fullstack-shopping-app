@@ -94,6 +94,7 @@ export const login = async (req, res) => {
     //checking if the user exists and if the password is correct
     if (!user || !decPassword) {
       res.status(400).json({ error: 'Invalid username or password' });
+      return;
     }
 
     //if the user exists and the password is correct, generate a token and send it as a cookie

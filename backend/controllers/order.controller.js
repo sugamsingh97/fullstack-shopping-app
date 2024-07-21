@@ -34,14 +34,14 @@ export const addToOrder = async (req, res) => {
         ],
       });
     } else {
-      // else we are checking if this product already exists in the orderList
-      const productExists = order.products.find(
+      // Find the index of the product in the order
+      const productIndex = order.products.findIndex(
         (product) => product.productId.toString() === newProductId
       );
 
-      // if this exists then only update the quantity of the product
-      if (productExists) {
-        productExists.quantity += newQuantity;
+      if (productIndex !== -1) {
+        // If the product exists, update its quantity
+        order.products[productIndex].quantity += newQuantity;
       } else {
         // else we are pushing the product to the orderList
         order.products.push({
@@ -81,7 +81,7 @@ export const getAllOrders = async (req, res) => {
     const orderList = await Order.find();
 
     // if the orderList is not empty, we are sending it as a response
-    if (orderList.length > 0) {
+    if (orderList?.length > 0) {
       return res.status(200).json(orderList);
     } else {
       return res.status(204).json({
@@ -104,7 +104,7 @@ export const getAllClientOrders = async (req, res) => {
     const userOrderList = await Order.find({ userId: currentUserId });
 
     //if the list is not empty, we are sending it as a response
-    if (userOrderList.length > 0) {
+    if (userOrderList?.length > 0) {
       return res.status(200).json(userOrderList);
     } else {
       return res.status(204).json({
@@ -117,7 +117,28 @@ export const getAllClientOrders = async (req, res) => {
   }
 };
 
-// update the order status
+// client gets its order with  'draft' status
+export const getCurrentOrder = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    const currentOrder = await Order.findOne({
+      userId: currentUserId,
+      status: 'draft',
+    });
+    if (!currentOrder) {
+      return res.status(404).json({
+        error: 'No current order found for this client',
+      });
+    }
+
+    res.status(200).json(currentOrder);
+  } catch (error) {
+    console.log('Error in get current order controller', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// client updating the order quantity
 export const updateOrder = async (req, res) => {
   try {
     if (req.user.userRole !== 'client') {
@@ -156,7 +177,7 @@ export const updateOrder = async (req, res) => {
   }
 };
 
-//
+// update the order status
 export const updateStatus = async (req, res) => {
   try {
     const { orderId, status } = req.body;
@@ -167,14 +188,20 @@ export const updateStatus = async (req, res) => {
         error: 'Order not found',
       });
     }
+    // check if the user is a client and the status is not submitted
+    // clients can only update the status to submitted
     if (req.user.userRole === 'client' && status !== 'submitted') {
       return res.status(401).json({
         error: 'Clients can not update orders',
       });
     }
+
+    // cheick if the role is client and the status is submitted
     if (req.user.userRole === 'client' && status === 'submitted') {
       orderToUpdate.status = status;
     }
+
+    // check if the role is owner and the status is not submitted
     if (req.user.userRole === 'owner' && status !== 'submitted') {
       if (
         status === 'accepted' ||
@@ -202,5 +229,5 @@ const calculateTotalAmount = async (orderToUpdate) => {
       totalAmount += originalProduct.price * product.quantity;
     }
   }
-  return totalAmount;
+  return totalAmount.toFixed(2);
 };

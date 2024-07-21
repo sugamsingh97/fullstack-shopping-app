@@ -1,6 +1,6 @@
 import Product from '../models/product.model.js';
 
-//add a new product
+//add a new product by the owner
 export const addProduct = async (req, res) => {
   try {
     //we access the current authticated user from the request and not response be careful
